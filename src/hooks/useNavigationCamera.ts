@@ -1,18 +1,68 @@
 import { useEffect, useRef } from "react";
-import { Camera } from "@rnmapbox/maps";
-import { CAMERA, cameraPadding, speedZoom } from "../constants/camera";
+import type MapView from "react-native-maps";
+import {
+  CAMERA,
+  altitudeForZoom,
+  forwardOffsetMeters,
+  speedZoom,
+} from "../constants/camera";
 import { motionEngine } from "../services/motionEngine";
 import { useMapStore } from "../stores/mapStore";
-import { angleDelta } from "../utils/geo";
+import { angleDelta, normalizeAngle, projectForward } from "../utils/geo";
 
+/**
+ * Drives the map camera imperatively via `MapView.animateCamera`.
+ * react-native-maps has no separate `<Camera>` element (unlike Mapbox), so
+ * this hook both runs the animation loop and returns the gesture handlers
+ * `MiniMap` wires onto `<MapView>` to detect manual panning/rotating.
+ *
+ * A "programmatic window" (`programmaticUntil`) tracks whenever *we* just
+ * moved the camera, so `onRegionChangeComplete` — which also fires for our
+ * own animations — can tell them apart from a real user gesture. This is
+ * the only reliable cross-platform signal: `isGesture` on
+ * `onRegionChangeComplete` is Google Maps (Android) only.
+ */
 export function useNavigationCamera(
+  mapRef: React.RefObject<MapView | null>,
   height: number,
   ready: boolean,
   active: boolean,
 ) {
-  const camera = useRef<Camera>(null);
+  const programmaticUntil = useRef(0);
+  const lastTelemetry = useRef(0);
+
   useEffect(() => {
     if (!ready || !height || !active) return;
+    const moveCamera = (
+      partial: {
+        centerCoordinate?: [number, number];
+        heading?: number;
+        pitch?: number;
+        zoom?: number;
+      },
+      duration: number,
+    ) => {
+      programmaticUntil.current = Date.now() + duration + 250;
+      mapRef.current?.animateCamera(
+        {
+          ...(partial.centerCoordinate && {
+            center: {
+              latitude: partial.centerCoordinate[1],
+              longitude: partial.centerCoordinate[0],
+            },
+          }),
+          ...(partial.heading !== undefined && {
+            heading: normalizeAngle(partial.heading),
+          }),
+          ...(partial.pitch !== undefined && { pitch: partial.pitch }),
+          ...(partial.zoom !== undefined && {
+            zoom: partial.zoom,
+            altitude: altitudeForZoom(partial.zoom),
+          }),
+        },
+        { duration },
+      );
+    };
     let transitionUntil = 0;
     let needsTransition = true;
     let heading: number | null = null;
@@ -26,19 +76,24 @@ export function useNavigationCamera(
         heading === null
           ? frame.heading
           : heading + angleDelta(heading, frame.heading);
+      const pitch = state.is3D
+        ? state.mock
+          ? CAMERA.simulationPitch
+          : CAMERA.followPitch
+        : 0;
+      const zoom = state.mock ? speedZoom(frame.speed) : CAMERA.followZoom;
+      const offset = forwardOffsetMeters(
+        height,
+        zoom,
+        pitch,
+        frame.coordinate[1],
+        CAMERA.playerScreenFraction,
+      );
+      const centerCoordinate = projectForward(frame.coordinate, heading, offset);
       const duration = needsTransition ? CAMERA.transitionMs : CAMERA.frameMs;
-      camera.current?.setCamera({
-        centerCoordinate: frame.coordinate,
-        heading,
-        zoomLevel: state.mock ? speedZoom(frame.speed) : CAMERA.followZoom,
-        pitch: state.is3D
-          ? state.mock
-            ? CAMERA.simulationPitch
-            : CAMERA.followPitch
-          : 0,
-        padding: cameraPadding(height),
-        animationDuration: duration,
-        animationMode: needsTransition ? "easeTo" : "linearTo",
+      moveCamera({ centerCoordinate, heading, pitch, zoom }, duration);
+      useMapStore.setState({
+        camera: { bearing: normalizeAngle(heading), zoom, pitch },
       });
       if (needsTransition) transitionUntil = Date.now() + duration;
       needsTransition = false;
@@ -56,19 +111,14 @@ export function useNavigationCamera(
         heading = state.camera.bearing;
         if (state.mode === "explore") {
           if (state.is3D !== previous.is3D)
-            camera.current?.setCamera({
-              pitch: state.is3D ? CAMERA.followPitch : 0,
-              animationDuration: CAMERA.transitionMs,
-              animationMode: "easeTo",
-            });
+            moveCamera(
+              { pitch: state.is3D ? CAMERA.followPitch : 0 },
+              CAMERA.transitionMs,
+            );
         } else update();
       }
       if (state.northRevision !== previous.northRevision) {
-        camera.current?.setCamera({
-          heading: 0,
-          animationDuration: CAMERA.transitionMs,
-          animationMode: "easeTo",
-        });
+        moveCamera({ heading: 0 }, CAMERA.transitionMs);
       }
     });
     update();
@@ -76,6 +126,40 @@ export function useNavigationCamera(
       unsubscribeMotion();
       unsubscribeState();
     };
-  }, [height, ready, active]);
-  return camera;
+  }, [mapRef, height, ready, active]);
+
+  const onPanDrag = () => {
+    if (useMapStore.getState().mode !== "explore")
+      useMapStore.getState().setMode("explore");
+  };
+
+  const onRegionChangeComplete = (
+    _region: unknown,
+    details?: { isGesture?: boolean },
+  ) => {
+    const isProgrammatic = Date.now() < programmaticUntil.current;
+    if (
+      !isProgrammatic &&
+      details?.isGesture !== false &&
+      useMapStore.getState().mode !== "explore"
+    ) {
+      useMapStore.getState().setMode("explore");
+    }
+    if (Date.now() - lastTelemetry.current < 300) return;
+    lastTelemetry.current = Date.now();
+    mapRef.current
+      ?.getCamera()
+      .then((camera) => {
+        useMapStore.setState({
+          camera: {
+            bearing: normalizeAngle(camera.heading),
+            zoom: camera.zoom ?? CAMERA.followZoom,
+            pitch: camera.pitch,
+          },
+        });
+      })
+      .catch(() => {});
+  };
+
+  return { onPanDrag, onRegionChangeComplete };
 }

@@ -1,168 +1,62 @@
+import type { MapStyleElement } from "react-native-maps";
 import { colors } from "./theme";
-const roadWidth = ["interpolate", ["linear"], ["zoom"], 12, 1, 16, 8, 19, 26];
-const road = {
-  source: "streets",
-  "source-layer": "road",
-  type: "line",
-  layout: { "line-cap": "round", "line-join": "round" },
-};
-export const mapStyle = {
-  version: 8,
-  name: "Minimapp / Field",
-  glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
-  sources: {
-    streets: { type: "vector", url: "mapbox://mapbox.mapbox-streets-v8" },
+
+/**
+ * Google Maps JSON style (Android only — `customMapStyle` on `MapView`).
+ * Apple Maps (the iOS default provider) has no JSON styling API, so iOS
+ * renders in standard Apple Maps colors; see README for the trade-off.
+ *
+ * Rules cascade like CSS: later, more specific rules win. Ordered from the
+ * general base up to per-feature overrides.
+ */
+export const GOOGLE_MAP_STYLE: MapStyleElement[] = [
+  { elementType: "geometry", stylers: [{ color: colors.land }] },
+  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: colors.muted }] },
+  {
+    elementType: "labels.text.stroke",
+    stylers: [{ color: colors.road }, { weight: 2 }],
   },
-  light: {
-    anchor: "viewport",
-    color: "#FFFFFF",
-    intensity: 0.35,
-    position: [1.5, 190, 45],
+  { featureType: "administrative", stylers: [{ visibility: "off" }] },
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "poi.park",
+    elementType: "geometry.fill",
+    stylers: [{ color: colors.park, visibility: "on" }],
   },
-  layers: [
-    {
-      id: "ground",
-      type: "background",
-      paint: { "background-color": colors.land },
-    },
-    {
-      id: "parks",
-      type: "fill",
-      source: "streets",
-      "source-layer": "landuse",
-      filter: [
-        "match",
-        ["get", "class"],
-        ["park", "grass", "wood", "scrub"],
-        true,
-        false,
-      ],
-      paint: { "fill-color": colors.park, "fill-opacity": 0.65 },
-    },
-    {
-      id: "water",
-      type: "fill",
-      source: "streets",
-      "source-layer": "water",
-      paint: { "fill-color": colors.water },
-    },
-    {
-      ...road,
-      id: "minor-roads",
-      filter: [
-        "match",
-        ["get", "class"],
-        ["street", "street_limited", "service", "path", "pedestrian"],
-        true,
-        false,
-      ],
-      paint: {
-        "line-color": colors.minorRoad,
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          13,
-          0.5,
-          16,
-          5,
-          19,
-          18,
-        ],
-      },
-    },
-    {
-      ...road,
-      id: "road-casing",
-      filter: [
-        "match",
-        ["get", "class"],
-        ["motorway", "trunk", "primary", "secondary", "tertiary"],
-        true,
-        false,
-      ],
-      paint: {
-        "line-color": "#BFC8BC",
-        "line-width": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          12,
-          2,
-          16,
-          11,
-          19,
-          31,
-        ],
-      },
-    },
-    {
-      ...road,
-      id: "main-roads",
-      filter: [
-        "match",
-        ["get", "class"],
-        ["motorway", "trunk", "primary", "secondary", "tertiary"],
-        true,
-        false,
-      ],
-      paint: { "line-color": colors.road, "line-width": roadWidth },
-    },
-    {
-      id: "buildings",
-      type: "fill-extrusion",
-      source: "streets",
-      "source-layer": "building",
-      minzoom: 15,
-      filter: ["!=", ["get", "extrude"], "false"],
-      paint: {
-        "fill-extrusion-color": colors.building,
-        "fill-extrusion-height": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          15,
-          0,
-          16,
-          ["min", ["to-number", ["get", "height"], 6], 60],
-        ],
-        "fill-extrusion-base": [
-          "min",
-          ["to-number", ["get", "min_height"], 0],
-          60,
-        ],
-        "fill-extrusion-opacity": 0.72,
-        "fill-extrusion-vertical-gradient": true,
-      },
-    },
-    {
-      id: "road-names",
-      type: "symbol",
-      source: "streets",
-      "source-layer": "road",
-      minzoom: 16.5,
-      filter: [
-        "match",
-        ["get", "class"],
-        ["primary", "secondary", "tertiary"],
-        true,
-        false,
-      ],
-      layout: {
-        "symbol-placement": "line",
-        "symbol-spacing": 380,
-        "text-field": ["get", "name"],
-        "text-font": ["DIN Pro Medium"],
-        "text-size": 10,
-        "text-letter-spacing": 0.08,
-        "text-max-angle": 25,
-      },
-      paint: {
-        "text-color": "#7C887E",
-        "text-halo-color": colors.road,
-        "text-halo-width": 1.5,
-      },
-    },
-  ],
-};
-export const MAP_STYLE_JSON = JSON.stringify(mapStyle);
+  {
+    featureType: "landscape.natural",
+    elementType: "geometry.fill",
+    stylers: [{ color: colors.land }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry.fill",
+    stylers: [{ color: colors.minorRoad }],
+  },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ visibility: "off" }] },
+  { featureType: "road", elementType: "labels", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "road.arterial",
+    elementType: "geometry.fill",
+    stylers: [{ color: colors.road }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.fill",
+    stylers: [{ color: colors.road }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels",
+    stylers: [{ visibility: "simplified" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: colors.muted }],
+  },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: colors.water }] },
+  { featureType: "water", elementType: "labels", stylers: [{ visibility: "off" }] },
+];

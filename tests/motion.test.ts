@@ -1,10 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { MotionEngine } from "../src/services/motionEngine";
-import { angleDelta, distance, interpolateCoordinate } from "../src/utils/geo";
+import {
+  angleDelta,
+  distance,
+  interpolateCoordinate,
+  projectForward,
+} from "../src/utils/geo";
 import { mockFixAt } from "../src/services/mockLocationService";
-import { cameraPadding, speedZoom } from "../src/constants/camera";
-import type { LocationFix } from "../src/types/map";
+import { forwardOffsetMeters, speedZoom } from "../src/constants/camera";
+import type { Coordinate, LocationFix } from "../src/types/map";
 const base: LocationFix = {
   coordinate: [-122.39484, 37.78135],
   accuracy: 5,
@@ -144,14 +149,22 @@ test("coordinate interpolation takes the short path over the date line", () => {
   assert.ok(Math.abs(Math.abs(halfway[0]) - 180) < 1e-8);
 });
 
-test("follow padding places the player at 68% across phone sizes", () => {
+test("forward offset is zero when centered and grows with screen height", () => {
   for (const height of [320, 500, 800]) {
-    const p = cameraPadding(height);
-    assert.ok(
-      Math.abs((height + p.paddingTop - p.paddingBottom) / 2 / height - 0.68) <
-        1e-10,
-    );
+    assert.equal(forwardOffsetMeters(height, 16, 42, 37.78, 0.5), 0);
   }
+  const small = forwardOffsetMeters(320, 16, 42, 37.78, 0.68);
+  const large = forwardOffsetMeters(800, 16, 42, 37.78, 0.68);
+  assert.ok(small > 0 && large > small);
   assert.equal(speedZoom(0), 17.3);
   assert.equal(speedZoom(100), 16);
+});
+
+test("projecting forward moves the expected distance and direction", () => {
+  const origin: Coordinate = [-122.39484, 37.78135];
+  const north = projectForward(origin, 0, 100);
+  assert.ok(north[1] > origin[1]);
+  assert.ok(Math.abs(north[0] - origin[0]) < 1e-6);
+  assert.ok(Math.abs(distance(origin, north) - 100) < 1);
+  assert.deepEqual(projectForward(origin, 90, 0), origin);
 });

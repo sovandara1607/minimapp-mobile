@@ -1,11 +1,13 @@
-import { useCallback, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import Mapbox, { MapView, type MapState } from "@rnmapbox/maps";
-import { MAP_STYLE_JSON } from "../../constants/mapStyle";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
+import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import { GOOGLE_MAP_STYLE } from "../../constants/mapStyle";
+import { CAMERA, altitudeForZoom } from "../../constants/camera";
+import { MOCK_ROUTE } from "../../constants/mockRoute";
 import { colors } from "../../constants/theme";
 import { useMapStore } from "../../stores/mapStore";
 import { useUserLocation } from "../../hooks/useUserLocation";
-import { NavigationCamera } from "./NavigationCamera";
+import { useNavigationCamera } from "../../hooks/useNavigationCamera";
 import { PlayerPuck } from "./PlayerPuck";
 import { MapHUD } from "./MapHUD";
 import { MapControls } from "./MapControls";
@@ -13,63 +15,76 @@ import { LocationState } from "./LocationState";
 import { DebugOverlay } from "./DebugOverlay";
 import { ActionButton } from "../ui/ActionButton";
 
-void Mapbox.setAccessToken(process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "");
+const initialCamera = {
+  center: { latitude: MOCK_ROUTE[0]![1], longitude: MOCK_ROUTE[0]![0] },
+  zoom: CAMERA.followZoom,
+  pitch: CAMERA.followPitch,
+  heading: 0,
+  altitude: altitudeForZoom(CAMERA.followZoom),
+};
+// Apple Maps has no JSON style API, so the custom sage/gray palette only
+// applies on Android (Google Maps). iOS renders standard Apple Maps colors —
+// see README for the trade-off behind this choice.
+const androidOnlyStyle = Platform.OS === "android" ? GOOGLE_MAP_STYLE : undefined;
+// react-native-maps has no onMapLoadingError; a stalled onMapReady is the
+// only real-world failure mode (bad network / missing Android Maps key).
+const READY_TIMEOUT_MS = 9000;
+
 export function MiniMap() {
+  const map = useRef<MapView>(null);
   const [height, setHeight] = useState(0);
   const [ready, setReady] = useState(false);
-  const [error, setError] = useState(false);
+  const [stalled, setStalled] = useState(false);
   const [revision, setRevision] = useState(0);
   const debug = useMapStore((s) => s.debug);
   const { requestLocation, retry, active } = useUserLocation();
-  const lastTelemetry = useRef(0);
-  const onCameraChanged = useCallback((event: MapState) => {
-    const state = useMapStore.getState();
-    if (event.gestures.isGestureActive && state.mode !== "explore")
-      state.setMode("explore");
-    if (Date.now() - lastTelemetry.current > 500) {
-      lastTelemetry.current = Date.now();
-      useMapStore.setState({
-        camera: {
-          bearing: event.properties.heading,
-          zoom: event.properties.zoom,
-          pitch: event.properties.pitch,
-        },
-      });
-    }
+  const { onPanDrag, onRegionChangeComplete } = useNavigationCamera(
+    map,
+    height,
+    ready,
+    active,
+  );
+  const onLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
+    setHeight(event.nativeEvent.layout.height);
   }, []);
+  const onMapReady = useCallback(() => {
+    setReady(true);
+    setStalled(false);
+  }, []);
+  useEffect(() => {
+    if (ready) return;
+    const timer = setTimeout(() => setStalled(true), READY_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [ready, revision]);
   return (
-    <View
-      style={styles.map}
-      onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
-    >
+    <View style={styles.map} onLayout={onLayout}>
       <MapView
         key={revision}
+        ref={map}
         style={StyleSheet.absoluteFill}
-        styleJSON={MAP_STYLE_JSON}
-        scaleBarEnabled={false}
-        compassEnabled={false}
-        logoEnabled
-        attributionEnabled
-        logoPosition={{ left: 14, bottom: 14 }}
-        attributionPosition={{ right: 14, bottom: 14 }}
-        pitchEnabled
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        customMapStyle={androidOnlyStyle}
+        initialCamera={initialCamera}
+        showsBuildings
+        showsCompass={false}
+        showsMyLocationButton={false}
+        showsScale={false}
+        toolbarEnabled={false}
         rotateEnabled
+        pitchEnabled
         scrollEnabled
         zoomEnabled
-        preferredFramesPerSecond={60}
-        onCameraChanged={onCameraChanged}
-        onDidFinishLoadingStyle={() => {
-          setReady(true);
-          setError(false);
-        }}
-        onMapLoadingError={() => setError(true)}
+        minZoomLevel={CAMERA.minZoom}
+        maxZoomLevel={CAMERA.maxZoom}
+        onPanDrag={onPanDrag}
+        onRegionChangeComplete={onRegionChangeComplete}
+        onMapReady={onMapReady}
       >
-        <NavigationCamera height={height} ready={ready} active={active} />
         <PlayerPuck />
       </MapView>
       <MapHUD />
       <MapControls />
-      {!ready && !error && (
+      {!ready && !stalled && (
         <View pointerEvents="none" style={styles.loading}>
           <ActivityIndicator color={colors.ink} />
           <Text style={styles.loadingText}>Opening the map</Text>
@@ -82,16 +97,19 @@ export function MiniMap() {
         onRetry={retry}
       />
       {__DEV__ && debug && <DebugOverlay />}
-      {error && (
+      {stalled && (
         <View style={styles.error}>
           <Text selectable style={styles.errorText}>
-            The map couldn’t load. Check your connection and Mapbox token.
+            The map is taking a while to load. Check your connection
+            {Platform.OS === "android"
+              ? " and that ANDROID_GOOGLE_MAPS_API_KEY is set."
+              : "."}
           </Text>
           <ActionButton
             label="Reload map"
             onPress={() => {
               setReady(false);
-              setError(false);
+              setStalled(false);
               setRevision((value) => value + 1);
             }}
           />

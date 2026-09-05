@@ -29,3 +29,26 @@ export function interpolateCoordinate(
     a[1] + (b[1] - a[1]) * t,
   ];
 }
+const EARTH_RADIUS = 6371000;
+/** Great-circle destination point `meters` along `headingDeg` from `origin`. */
+export function projectForward(
+  origin: Coordinate,
+  headingDeg: number,
+  meters: number,
+): Coordinate {
+  if (!meters) return origin;
+  const angularDistance = meters / EARTH_RADIUS;
+  const bearingRad = radians(headingDeg);
+  const lat1 = radians(origin[1]);
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearingRad),
+  );
+  const lon2 =
+    radians(origin[0]) +
+    Math.atan2(
+      Math.sin(bearingRad) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2),
+    );
+  return [(((lon2 * 180) / Math.PI + 540) % 360) - 180, (lat2 * 180) / Math.PI];
+}

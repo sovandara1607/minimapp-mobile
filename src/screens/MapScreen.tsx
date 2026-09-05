@@ -7,15 +7,13 @@ import { useMapStore } from "../stores/mapStore";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Icon } from "../components/ui/Icon";
 
-const token = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN;
 const isNativeBuild =
   Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
 // Delay the native module import so accidentally opening Expo Go shows useful guidance.
-const NativeMap =
-  isNativeBuild && token?.startsWith("pk.")
-    ? (require("../components/map/MiniMap")
-        .MiniMap as typeof import("../components/map/MiniMap").MiniMap)
-    : null;
+const NativeMap = isNativeBuild
+  ? (require("../components/map/MiniMap")
+      .MiniMap as typeof import("../components/map/MiniMap").MiniMap)
+  : null;
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const mock = useMapStore((s) => s.mock);
@@ -48,20 +46,13 @@ export default function MapScreen() {
           <View style={styles.setupIcon}>
             <Icon name="layers" size={32} />
           </View>
-          <Text style={styles.title}>
-            {isNativeBuild
-              ? "One key to your world."
-              : "A native map deserves a native build."}
-          </Text>
+          <Text style={styles.title}>A native map deserves a native build.</Text>
           <Text selectable style={styles.body}>
-            {isNativeBuild
-              ? "Add your public Mapbox token to .env.local, then restart Metro. The map will be ready to explore."
-              : "Mapbox needs an Expo development build. Install the iOS or Android development client, then open this project there."}
+            react-native-maps needs an Expo development build. Install the iOS
+            or Android development client, then open this project there.
           </Text>
           <Text selectable style={styles.code}>
-            {isNativeBuild
-              ? "EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.…"
-              : "npm run ios  /  npm run android"}
+            npm run ios  /  npm run android
           </Text>
         </View>
       )}

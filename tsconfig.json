@@ -4,8 +4,22 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "exclude": ["node_modules", ".test-build", "ios", "android", "tests"]
+  "exclude": [
+    "node_modules",
+    ".test-build",
+    "ios",
+    "android",
+    "tests"
+  ],
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ]
 }
