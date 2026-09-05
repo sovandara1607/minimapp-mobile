@@ -9,7 +9,7 @@ module.exports = {
     slug: "minimapp-mobile",
     version: "0.1.0",
     scheme: "minimapp",
-    orientation: "portrait",
+    orientation: "default",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     ios: {
@@ -27,6 +27,7 @@ module.exports = {
     },
     plugins: [
       "expo-router",
+      "./plugins/withSceneDelegate",
       ["react-native-maps", { androidGoogleMapsApiKey }],
       [
         "expo-location",

@@ -8,7 +8,8 @@ type Name =
   | "play"
   | "signal"
   | "close"
-  | "settings";
+  | "settings"
+  | "search";
 const paths: Record<Name, string> = {
   arrow: "M12 3 4 21l8-5 8 5-8-18Z",
   locate: "M12 2v4m0 12v4M2 12h4m12 0h4",
@@ -18,6 +19,7 @@ const paths: Record<Name, string> = {
   signal: "M4 18v2m5-7v7m5-12v12m5-17v17",
   close: "m6 6 12 12M18 6 6 18",
   settings: "M4 7h16M4 17h16M8 4v6m8 4v6",
+  search: "m21 21-4.35-4.35",
 };
 export function Icon({
   name,
@@ -41,6 +43,7 @@ export function Icon({
     >
       <Path d={paths[name]} />
       {name === "locate" && <Circle cx={12} cy={12} r={5} />}
+      {name === "search" && <Circle cx={10} cy={10} r={7} />}
     </Svg>
   );
 }

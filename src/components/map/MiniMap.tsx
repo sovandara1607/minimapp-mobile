@@ -1,19 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { PROVIDER_GOOGLE, type LongPressEvent } from "react-native-maps";
 import { GOOGLE_MAP_STYLE } from "../../constants/mapStyle";
 import { CAMERA, altitudeForZoom } from "../../constants/camera";
 import { MOCK_ROUTE } from "../../constants/mockRoute";
 import { colors } from "../../constants/theme";
 import { useMapStore } from "../../stores/mapStore";
+import { useNavigationStore } from "../../stores/navigationStore";
 import { useUserLocation } from "../../hooks/useUserLocation";
 import { useNavigationCamera } from "../../hooks/useNavigationCamera";
+import { useRoute } from "../../hooks/useRoute";
 import { PlayerPuck } from "./PlayerPuck";
+import { RouteLayer } from "./RouteLayer";
+import { DestinationMarker } from "./DestinationMarker";
+import { DestinationSearch } from "./DestinationSearch";
 import { MapHUD } from "./MapHUD";
 import { MapControls } from "./MapControls";
 import { LocationState } from "./LocationState";
 import { DebugOverlay } from "./DebugOverlay";
 import { ActionButton } from "../ui/ActionButton";
+import { formatDistance } from "../../utils/format";
 
 const initialCamera = {
   center: { latitude: MOCK_ROUTE[0]![1], longitude: MOCK_ROUTE[0]![0] },
@@ -37,6 +43,9 @@ export function MiniMap() {
   const [stalled, setStalled] = useState(false);
   const [revision, setRevision] = useState(0);
   const debug = useMapStore((s) => s.debug);
+  const destination = useNavigationStore((s) => s.destination);
+  const route = useNavigationStore((s) => s.route);
+  const navigating = useNavigationStore((s) => s.navigating);
   const { requestLocation, retry, active } = useUserLocation();
   const { onPanDrag, onRegionChangeComplete } = useNavigationCamera(
     map,
@@ -44,6 +53,7 @@ export function MiniMap() {
     ready,
     active,
   );
+  useRoute();
   const onLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
     setHeight(event.nativeEvent.layout.height);
   }, []);
@@ -51,11 +61,32 @@ export function MiniMap() {
     setReady(true);
     setStalled(false);
   }, []);
+  const onLongPress = useCallback((event: LongPressEvent) => {
+    const { coordinate } = event.nativeEvent;
+    useNavigationStore.getState().setDestination({
+      coordinate: [coordinate.longitude, coordinate.latitude],
+      label: "Dropped pin",
+    });
+    useMapStore.getState().setMode("explore");
+  }, []);
   useEffect(() => {
     if (ready) return;
     const timer = setTimeout(() => setStalled(true), READY_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [ready, revision]);
+  // While previewing a route (set but not yet started), show the whole
+  // route instead of fighting the follow camera for the frame.
+  useEffect(() => {
+    if (!route || navigating) return;
+    const points = route.coordinates.map(([longitude, latitude]) => ({
+      latitude,
+      longitude,
+    }));
+    map.current?.fitToCoordinates(points, {
+      edgePadding: { top: 100, right: 60, bottom: 220, left: 60 },
+      animated: true,
+    });
+  }, [route, navigating]);
   return (
     <View style={styles.map} onLayout={onLayout}>
       <MapView
@@ -68,7 +99,11 @@ export function MiniMap() {
         showsBuildings
         showsCompass={false}
         showsMyLocationButton={false}
+        showsUserLocation
         showsScale={false}
+        showsIndoors={false}
+        showsTraffic={false}
+        showsPointsOfInterests
         toolbarEnabled={false}
         rotateEnabled
         pitchEnabled
@@ -79,9 +114,20 @@ export function MiniMap() {
         onPanDrag={onPanDrag}
         onRegionChangeComplete={onRegionChangeComplete}
         onMapReady={onMapReady}
+        onLongPress={onLongPress}
       >
+        {route && <RouteLayer coordinates={route.coordinates} />}
+        {destination && (
+          <DestinationMarker
+            destination={destination}
+            detail={route ? formatDistance(route.distanceMeters) : undefined}
+          />
+        )}
         <PlayerPuck />
       </MapView>
+      <View style={styles.search} pointerEvents="box-none">
+        <DestinationSearch />
+      </View>
       <MapHUD />
       <MapControls />
       {!ready && !stalled && (
@@ -128,6 +174,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E7EDE3",
   },
+  search: { position: "absolute", top: 70, left: 18, right: 18 },
   loading: {
     position: "absolute",
     top: 80,

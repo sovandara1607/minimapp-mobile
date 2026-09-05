@@ -11,14 +11,12 @@ import { colors } from "./theme";
  */
 export const GOOGLE_MAP_STYLE: MapStyleElement[] = [
   { elementType: "geometry", stylers: [{ color: colors.land }] },
-  { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
   { elementType: "labels.text.fill", stylers: [{ color: colors.muted }] },
   {
     elementType: "labels.text.stroke",
     stylers: [{ color: colors.road }, { weight: 2 }],
   },
   { featureType: "administrative", stylers: [{ visibility: "off" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
   {
     featureType: "poi.park",
     elementType: "geometry.fill",

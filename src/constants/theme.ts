@@ -11,4 +11,8 @@ export const colors = {
   accent: "#407D72",
   border: "#DAE2D8",
   glass: "rgba(245,247,242,0.94)",
+  // Original route palette — warm coral reads clearly over the sage/gray map
+  // without borrowing any existing game's exact navigation color.
+  routeCasing: "#20302D",
+  route: "#FF7A54",
 } as const;
