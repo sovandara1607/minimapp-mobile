@@ -1,22 +1,43 @@
 {
   "name": "minimapp-mobile",
   "version": "1.0.0",
-  "main": "index.ts",
+  "main": "expo-router/entry",
   "dependencies": {
+    "@rnmapbox/maps": "^10.3.5",
     "expo": "~57.0.20",
+    "expo-constants": "~57.0.17",
+    "expo-dev-client": "~57.0.18",
+    "expo-linking": "~57.0.9",
+    "expo-location": "~57.0.16",
+    "expo-router": "~57.0.19",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.3",
     "react": "19.2.3",
-    "react-native": "0.86.3"
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "react-native-worklets": "0.10.1",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@mapbox/mapbox-gl-style-spec": "^14.30.0",
+    "@types/node": "^26.4.1",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
+    "start": "expo start --dev-client",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test .test-build/tests/*.test.js",
+    "check": "npm run typecheck && npm test",
+    "build:ios:dev": "npx eas-cli build --platform ios --profile development",
+    "build:android:dev": "npx eas-cli build --platform android --profile development"
   },
   "private": true
 }
