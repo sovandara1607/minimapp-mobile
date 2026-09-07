@@ -11,7 +11,7 @@ export interface RouteResult {
   durationSeconds: number;
 }
 
-export type RouteStatus = "idle" | "loading" | "ready" | "error";
+export type RouteStatus = "idle" | "loading" | "ready" | "error" | "rerouting";
 
 export interface SearchResult {
   coordinate: Coordinate;

@@ -4,6 +4,7 @@ import { Link } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../constants/theme";
 import { useMapStore } from "../stores/mapStore";
+import { useOrientation } from "../hooks/useOrientation";
 import { ActionButton } from "../components/ui/ActionButton";
 import { Icon } from "../components/ui/Icon";
 
@@ -16,28 +17,65 @@ const NativeMap = isNativeBuild
   : null;
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const { isLandscape } = useOrientation();
   const mock = useMapStore((s) => s.mock);
   const setMock = useMapStore((s) => s.setMock);
+  // Landscape phones are short on height and, held either way round, put a
+  // notch or camera cutout on one side rather than the top — so padding
+  // has to widen on whichever edge the inset actually reports, and the
+  // wordmark chrome above/below the map has to shrink to leave the map (the
+  // one thing worth the screen's height) most of the frame.
+  const devControl = mock ? (
+    <ActionButton
+      label="Stop simulation"
+      compact
+      onPress={() => setMock(false)}
+    >
+      <Icon name="pause" size={18} />
+    </ActionButton>
+  ) : (
+    <Link href="/developer" asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Developer controls"
+        style={styles.devLink}
+      >
+        <Icon name="settings" size={21} />
+      </Pressable>
+    </Link>
+  );
   return (
     <View
       style={[
         styles.screen,
         {
-          paddingTop: insets.top + 12,
-          paddingBottom: Math.max(insets.bottom, 18),
+          paddingTop: insets.top + (isLandscape ? 8 : 12),
+          paddingBottom: Math.max(insets.bottom, isLandscape ? 10 : 18),
+          paddingLeft: Math.max(insets.left, 16),
+          paddingRight: Math.max(insets.right, 16),
         },
       ]}
     >
-      <View style={styles.header}>
+      <View
+        style={[styles.header, isLandscape && styles.headerLandscape]}
+      >
         <View>
-          <Text style={styles.eyebrow}>YOUR WORLD, IN VIEW</Text>
-          <Text accessibilityRole="header" style={styles.brand}>
+          {!isLandscape && (
+            <Text style={styles.eyebrow}>YOUR WORLD, IN VIEW</Text>
+          )}
+          <Text
+            accessibilityRole="header"
+            style={[styles.brand, isLandscape && styles.brandCompact]}
+          >
             minimapp<Text style={{ color: colors.accent }}>.</Text>
           </Text>
         </View>
-        <View style={styles.mark}>
-          <Icon name="arrow" size={23} />
-        </View>
+        {!isLandscape && (
+          <View style={styles.mark}>
+            <Icon name="arrow" size={23} />
+          </View>
+        )}
+        {isLandscape && __DEV__ && devControl}
       </View>
       {NativeMap ? (
         <NativeMap />
@@ -56,42 +94,27 @@ export default function MapScreen() {
           </Text>
         </View>
       )}
-      <View style={styles.footer}>
-        <View style={{ flex: 1, gap: 5 }}>
-          <Text style={styles.footerTitle}>
-            {mock ? "Take the scenic loop." : "A little perspective."}
-          </Text>
-          <Text style={styles.footerDetail}>
-            {mock
-              ? "South Park, San Francisco · simulation"
-              : "Move freely. Your map moves with you."}
-          </Text>
-        </View>
-        {__DEV__ &&
-          (mock ? (
-            <ActionButton
-              label="Stop simulation"
-              compact
-              onPress={() => setMock(false)}
-            >
-              <Icon name="pause" size={18} />
-            </ActionButton>
-          ) : (
-            <Link href="/developer" asChild>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Developer controls"
-                style={styles.devLink}
-              >
-                <Icon name="settings" size={21} />
-              </Pressable>
+      {!isLandscape && (
+        <>
+          <View style={styles.footer}>
+            <View style={{ flex: 1, gap: 5 }}>
+              <Text style={styles.footerTitle}>
+                {mock ? "Take the scenic loop." : "A little perspective."}
+              </Text>
+              <Text style={styles.footerDetail}>
+                {mock
+                  ? "South Park, San Francisco · simulation"
+                  : "Move freely. Your map moves with you."}
+              </Text>
+            </View>
+            {__DEV__ && devControl}
+          </View>
+          {__DEV__ && mock && (
+            <Link href="/developer" style={styles.debugLink}>
+              Developer controls
             </Link>
-          ))}
-      </View>
-      {__DEV__ && mock && (
-        <Link href="/developer" style={styles.debugLink}>
-          Developer controls
-        </Link>
+          )}
+        </>
       )}
     </View>
   );
@@ -100,7 +123,6 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.paper,
-    paddingHorizontal: 16,
     gap: 20,
   },
   header: {
@@ -110,6 +132,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingBottom: 1,
   },
+  headerLandscape: { paddingBottom: 0, gap: 10 },
   eyebrow: {
     color: colors.muted,
     fontSize: 9,
@@ -123,6 +146,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: -1.6,
   },
+  brandCompact: { fontSize: 20, letterSpacing: -1 },
   mark: {
     width: 46,
     height: 46,

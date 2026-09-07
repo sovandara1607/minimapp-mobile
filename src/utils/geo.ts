@@ -31,6 +31,38 @@ export function interpolateCoordinate(
 }
 const EARTH_RADIUS = 6371000;
 /** Great-circle destination point `meters` along `headingDeg` from `origin`. */
+/**
+ * Shortest distance in meters from `point` to the polyline `line`, measured
+ * to the nearest point on any segment (not just its vertices) — a route's
+ * straight-line legs can span kilometers, so vertex-only distance would call
+ * someone "off route" while they're still squarely on a long segment.
+ *
+ * Each segment is projected onto a local equirectangular plane centered on
+ * its own start point before measuring; that's only accurate over the
+ * segment's own extent, which is exactly the region being measured, so the
+ * shortcut costs nothing in practice while avoiding a full geodesic solve.
+ */
+export function distanceToPolyline(point: Coordinate, line: Coordinate[]): number {
+  if (line.length === 0) return Infinity;
+  if (line.length === 1) return distance(point, line[0]!);
+  let nearest = Infinity;
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i]!;
+    const b = line[i + 1]!;
+    const metersPerLon = 111320 * Math.cos(radians(a[1]));
+    const toXY = (c: Coordinate): [number, number] => [
+      (c[0] - a[0]) * metersPerLon,
+      (c[1] - a[1]) * 111320,
+    ];
+    const [px, py] = toXY(point);
+    const [bx, by] = toXY(b);
+    const lengthSq = bx * bx + by * by;
+    const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / lengthSq));
+    const d = Math.hypot(px - t * bx, py - t * by);
+    if (d < nearest) nearest = d;
+  }
+  return nearest;
+}
 export function projectForward(
   origin: Coordinate,
   headingDeg: number,

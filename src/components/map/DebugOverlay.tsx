@@ -2,8 +2,10 @@ import { ScrollView, StyleSheet, Text } from "react-native";
 import { useMapStore } from "../../stores/mapStore";
 import { useEffect, useState } from "react";
 import { motionEngine } from "../../services/motionEngine";
+import { useOrientation } from "../../hooks/useOrientation";
 export function DebugOverlay() {
   const state = useMapStore();
+  const { isLandscape } = useOrientation();
   const [heading, setHeading] = useState(0);
   useEffect(() => {
     const timer = setInterval(
@@ -27,7 +29,10 @@ export function DebugOverlay() {
     `STATUS    ${state.status}${state.stale ? " / stale" : ""}`,
   ];
   return (
-    <ScrollView style={styles.panel} contentContainerStyle={{ padding: 14 }}>
+    <ScrollView
+      style={[styles.panel, isLandscape && styles.panelLandscape]}
+      contentContainerStyle={{ padding: 14 }}
+    >
       <Text selectable style={styles.text}>
         {rows.join("\n")}
       </Text>
@@ -43,6 +48,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: "rgba(26,42,39,0.93)",
   },
+  panelLandscape: { top: 54, maxHeight: 150 },
   text: {
     fontFamily: "monospace",
     color: "#DFECE1",

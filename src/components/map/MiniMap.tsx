@@ -10,6 +10,8 @@ import { useNavigationStore } from "../../stores/navigationStore";
 import { useUserLocation } from "../../hooks/useUserLocation";
 import { useNavigationCamera } from "../../hooks/useNavigationCamera";
 import { useRoute } from "../../hooks/useRoute";
+import { useRerouting } from "../../hooks/useRerouting";
+import { useOrientation } from "../../hooks/useOrientation";
 import { PlayerPuck } from "./PlayerPuck";
 import { RouteLayer } from "./RouteLayer";
 import { DestinationMarker } from "./DestinationMarker";
@@ -46,6 +48,7 @@ export function MiniMap() {
   const destination = useNavigationStore((s) => s.destination);
   const route = useNavigationStore((s) => s.route);
   const navigating = useNavigationStore((s) => s.navigating);
+  const { isLandscape } = useOrientation();
   const { requestLocation, retry, active } = useUserLocation();
   const { onPanDrag, onRegionChangeComplete } = useNavigationCamera(
     map,
@@ -54,6 +57,7 @@ export function MiniMap() {
     active,
   );
   useRoute();
+  useRerouting();
   const onLayout = useCallback((event: { nativeEvent: { layout: { height: number } } }) => {
     setHeight(event.nativeEvent.layout.height);
   }, []);
@@ -82,11 +86,18 @@ export function MiniMap() {
       latitude,
       longitude,
     }));
+    // The bottom padding clears the route card + "Start" button; that
+    // cluster is much shallower in landscape (see MapControls), and the
+    // right side now also has to clear the button row instead of the
+    // search box, so the fit needs its own numbers per orientation rather
+    // than reusing the portrait ones and over-zooming out.
     map.current?.fitToCoordinates(points, {
-      edgePadding: { top: 100, right: 60, bottom: 220, left: 60 },
+      edgePadding: isLandscape
+        ? { top: 70, right: 90, bottom: 90, left: 60 }
+        : { top: 100, right: 60, bottom: 220, left: 60 },
       animated: true,
     });
-  }, [route, navigating]);
+  }, [route, navigating, isLandscape]);
   return (
     <View style={styles.map} onLayout={onLayout}>
       <MapView
@@ -125,8 +136,14 @@ export function MiniMap() {
         )}
         <PlayerPuck />
       </MapView>
-      <View style={styles.search} pointerEvents="box-none">
-        <DestinationSearch />
+      <View
+        style={[
+          styles.search,
+          isLandscape && styles.searchLandscape,
+        ]}
+        pointerEvents="box-none"
+      >
+        <DestinationSearch compact={isLandscape} />
       </View>
       <MapHUD />
       <MapControls />
@@ -175,6 +192,10 @@ const styles = StyleSheet.create({
     borderColor: "#E7EDE3",
   },
   search: { position: "absolute", top: 70, left: 18, right: 18 },
+  // Landscape trades vertical room for horizontal: pull the box up closer to
+  // the top edge and stop it stretching edge-to-edge — full-width would turn
+  // the input and its results list into an awkwardly wide single line.
+  searchLandscape: { top: 46, right: undefined, width: 380, maxWidth: "58%" },
   loading: {
     position: "absolute",
     top: 80,

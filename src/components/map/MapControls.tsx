@@ -3,6 +3,7 @@ import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useMapStore } from "../../stores/mapStore";
 import { useNavigationStore } from "../../stores/navigationStore";
 import { colors } from "../../constants/theme";
+import { useOrientation } from "../../hooks/useOrientation";
 import { formatDistance, formatDuration } from "../../utils/format";
 import { ActionButton } from "../ui/ActionButton";
 import { Icon } from "../ui/Icon";
@@ -18,9 +19,11 @@ export function MapControls() {
   const navigating = useNavigationStore((s) => s.navigating);
   const clearDestination = useNavigationStore((s) => s.clearDestination);
   const startNavigating = useNavigationStore((s) => s.startNavigating);
+  const stopNavigating = useNavigationStore((s) => s.stopNavigating);
+  const { isLandscape } = useOrientation();
   return (
     <View style={styles.controls} pointerEvents="box-none">
-      <View style={styles.column}>
+      <View style={[styles.column, isLandscape && styles.columnLandscape]}>
         <ActionButton label="Face north" compact onPress={northUp}>
           <Text style={styles.north}>N</Text>
         </ActionButton>
@@ -42,7 +45,7 @@ export function MapControls() {
         <Animated.View
           entering={FadeInDown.duration(220)}
           exiting={FadeOutDown.duration(160)}
-          style={styles.routeCard}
+          style={[styles.routeCard, isLandscape && styles.routeCardLandscape]}
         >
           <View style={styles.routeInfo}>
             <Text numberOfLines={1} style={styles.routeTitle}>
@@ -51,23 +54,34 @@ export function MapControls() {
             <Text style={styles.routeDetail}>
               {routeStatus === "loading"
                 ? "Finding a route…"
-                : routeStatus === "error"
-                  ? "Couldn't find a route"
-                  : route
-                    ? `${formatDistance(route.distanceMeters)} · ${formatDuration(route.durationSeconds)}`
-                    : ""}
+                : routeStatus === "rerouting"
+                  ? "Off route · rerouting…"
+                  : routeStatus === "error"
+                    ? "Couldn't find a route"
+                    : route
+                      ? `${formatDistance(route.distanceMeters)} · ${formatDuration(route.durationSeconds)}`
+                      : ""}
             </Text>
           </View>
-          <ActionButton
-            label="Clear"
-            compact
-            onPress={() => {
-              clearDestination();
-              recenter();
-            }}
-          >
-            <Icon name="close" size={16} />
-          </ActionButton>
+          {navigating ? (
+            // Distinct from "Clear": this returns to the route preview
+            // without discarding the destination, so a wrong tap while
+            // driving doesn't lose the whole route.
+            <ActionButton label="Stop" compact onPress={stopNavigating}>
+              <Icon name="pause" size={16} />
+            </ActionButton>
+          ) : (
+            <ActionButton
+              label="Clear"
+              compact
+              onPress={() => {
+                clearDestination();
+                recenter();
+              }}
+            >
+              <Icon name="close" size={16} />
+            </ActionButton>
+          )}
           {route && !navigating && (
             <ActionButton
               label="Start"
@@ -87,7 +101,7 @@ export function MapControls() {
         <Animated.View
           entering={FadeInDown.duration(220)}
           exiting={FadeOutDown.duration(160)}
-          style={styles.recenter}
+          style={[styles.recenter, isLandscape && styles.recenterLandscape]}
         >
           <ActionButton label="Recenter" onPress={recenter} primary>
             <Icon name="locate" color={colors.paper} size={19} />
@@ -100,7 +114,13 @@ export function MapControls() {
 const styles = StyleSheet.create({
   controls: { ...StyleSheet.absoluteFill },
   column: { position: "absolute", right: 16, top: 94, gap: 10 },
+  // Stacked vertically, three buttons cost ~170dp of height — affordable in
+  // a tall portrait map, not in a landscape one. Laid out as a row instead,
+  // pulled up near the top edge, they cost ~48dp and free the rest of the
+  // frame for the route card and readouts anchored to the bottom.
+  columnLandscape: { top: 12, flexDirection: "row" },
   recenter: { position: "absolute", bottom: 40, alignSelf: "center" },
+  recenterLandscape: { bottom: 16 },
   north: { color: colors.ink, fontWeight: "700", fontSize: 17 },
   dimension: { color: colors.ink, fontWeight: "600", fontSize: 13 },
   routeCard: {
@@ -118,6 +138,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  routeCardLandscape: { bottom: 12, padding: 10 },
   routeInfo: { flex: 1, gap: 3 },
   routeTitle: { fontSize: 14, fontWeight: "600", color: colors.ink },
   routeDetail: { fontSize: 11, color: colors.muted },

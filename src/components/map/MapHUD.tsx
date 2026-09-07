@@ -1,6 +1,8 @@
 import { StyleSheet, Text, View } from "react-native";
 import { useMapStore } from "../../stores/mapStore";
+import { useNavigationStore } from "../../stores/navigationStore";
 import { colors } from "../../constants/theme";
+import { useOrientation } from "../../hooks/useOrientation";
 import { Icon } from "../ui/Icon";
 export function MapHUD() {
   const mode = useMapStore((s) => s.mode);
@@ -9,9 +11,13 @@ export function MapHUD() {
   const accuracy = useMapStore((s) => s.fix?.accuracy);
   const stale = useMapStore((s) => s.stale);
   const headingAvailable = useMapStore((s) => s.headingAvailable);
+  // The route card only appears once a destination is set, so the readout
+  // only needs to dodge it (rather than always keeping extra clearance).
+  const hasRouteCard = useNavigationStore((s) => !!s.destination);
+  const { isLandscape } = useOrientation();
   return (
     <View pointerEvents="none" style={styles.hud}>
-      <View style={styles.mode}>
+      <View style={[styles.mode, isLandscape && styles.modeCompact]}>
         <View style={[styles.dot, stale && { backgroundColor: "#A07A42" }]} />
         <Text style={styles.label}>
           {mode === "explore"
@@ -21,9 +27,15 @@ export function MapHUD() {
               : "Following you"}
         </Text>
       </View>
-      <View style={styles.bottom}>
+      <View
+        style={[
+          styles.bottom,
+          isLandscape && styles.bottomCompact,
+          isLandscape && hasRouteCard && styles.bottomAboveCard,
+        ]}
+      >
         <View style={styles.readout}>
-          <Text selectable style={styles.speed}>
+          <Text selectable style={[styles.speed, isLandscape && styles.speedCompact]}>
             {speed === undefined ? "—" : Math.round(speed * 3.6)}
           </Text>
           <Text style={styles.unit}>km/h</Text>
@@ -62,9 +74,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.5)",
   },
+  modeCompact: { top: 10, left: 12, paddingVertical: 8, paddingHorizontal: 12 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
   label: { fontSize: 12, fontWeight: "600", color: colors.ink },
   bottom: { position: "absolute", bottom: 72, left: 22, gap: 6 },
+  // A landscape map is shorter top-to-bottom, so the whole readout sits
+  // closer to the edge; when the route card is also on screen it needs to
+  // clear that too, since there's no longer room to stack both with margin
+  // to spare the way a tall portrait map has.
+  bottomCompact: { bottom: 14, left: 16, gap: 3 },
+  bottomAboveCard: { bottom: 58 },
   readout: { flexDirection: "row", alignItems: "baseline", gap: 5 },
   speed: {
     fontSize: 30,
@@ -73,6 +92,7 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     fontVariant: ["tabular-nums"],
   },
+  speedCompact: { fontSize: 22 },
   unit: { color: colors.muted, fontSize: 11 },
   signal: { flexDirection: "row", alignItems: "center", gap: 5 },
   caption: { color: colors.muted, fontSize: 10 },

@@ -66,6 +66,7 @@ export function useNavigationCamera(
     let transitionUntil = 0;
     let needsTransition = true;
     let heading: number | null = null;
+    let reassertTimer: ReturnType<typeof setTimeout> | null = null;
     const update = () => {
       const state = useMapStore.getState();
       const frame = motionEngine.getSnapshot();
@@ -115,7 +116,27 @@ export function useNavigationCamera(
               { pitch: state.is3D ? CAMERA.followPitch : 0 },
               CAMERA.transitionMs,
             );
-        } else update();
+        } else {
+          update();
+          // Leaving Explore straight into Start/Recenter (e.g. tapping Start
+          // right after the route-preview `fitToCoordinates` call) can race
+          // that still-animating native camera command — whichever one lands
+          // last on the native side wins, and it isn't always this one. A
+          // delayed follow-up re-asserts the zoomed-in follow camera once the
+          // preview animation has certainly finished, so a lucky race can't
+          // leave the map stuck zoomed out.
+          if (previous.mode === "explore") {
+            if (reassertTimer) clearTimeout(reassertTimer);
+            reassertTimer = setTimeout(() => {
+              reassertTimer = null;
+              if (useMapStore.getState().mode !== "explore") {
+                needsTransition = true;
+                transitionUntil = 0;
+                update();
+              }
+            }, 1200);
+          }
+        }
       }
       if (state.northRevision !== previous.northRevision) {
         moveCamera({ heading: 0 }, CAMERA.transitionMs);
@@ -123,6 +144,7 @@ export function useNavigationCamera(
     });
     update();
     return () => {
+      if (reassertTimer) clearTimeout(reassertTimer);
       unsubscribeMotion();
       unsubscribeState();
     };

@@ -1,6 +1,7 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { colors } from "../../constants/theme";
 import { useMapStore } from "../../stores/mapStore";
+import { useOrientation } from "../../hooks/useOrientation";
 import { Icon } from "../ui/Icon";
 import { ActionButton } from "../ui/ActionButton";
 const content = {
@@ -37,12 +38,23 @@ export function LocationState({
   const fix = useMapStore((s) => s.fix);
   const stale = useMapStore((s) => s.stale);
   const setMock = useMapStore((s) => s.setMock);
+  const { isLandscape } = useOrientation();
   if (status === "granted" && fix) return null;
   const [title, detail] = content[status];
   const waiting = status === "checking" || (status === "granted" && !stale);
   return (
     <View style={styles.scrim}>
-      <View style={styles.card}>
+      {/* A short landscape window can't always fit this card's full height
+          (title + copy + two buttons); scrolling beats the alternative of
+          silently clipping the "Allow location" button off-screen. */}
+      <ScrollView
+        style={styles.cardScroll}
+        contentContainerStyle={[
+          styles.card,
+          isLandscape && styles.cardLandscape,
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.symbol}>
           <Icon name="arrow" size={30} />
         </View>
@@ -78,7 +90,7 @@ export function LocationState({
             onPress={() => setMock(true)}
           />
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -90,9 +102,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(204,211,201,0.6)",
     padding: 22,
   },
+  cardScroll: { width: "100%", maxWidth: 340, flexGrow: 0 },
   card: {
-    width: "100%",
-    maxWidth: 340,
     padding: 24,
     borderRadius: 28,
     borderCurve: "continuous",
@@ -102,6 +113,7 @@ const styles = StyleSheet.create({
     gap: 14,
     boxShadow: "0 12px 40px rgba(37,58,56,0.1)",
   },
+  cardLandscape: { padding: 18, gap: 10 },
   symbol: {
     width: 60,
     height: 60,

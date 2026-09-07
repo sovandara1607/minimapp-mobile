@@ -18,7 +18,7 @@ import type { SearchResult } from "../../types/navigation";
 /** Collapsed "Where to?" pill that expands into a text search over Nominatim. */
 const SEARCH_DEBOUNCE_MS = 500;
 
-export function DestinationSearch() {
+export function DestinationSearch({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -26,38 +26,41 @@ export function DestinationSearch() {
   const [status, setStatus] = useState<"idle" | "empty" | "failed">("idle");
   const requestId = useRef(0);
 
+  const run = useCallback((text: string) => {
+    const id = ++requestId.current;
+    setLoading(true);
+    setStatus("idle");
+    searchPlaces(text)
+      .then((found) => {
+        if (id !== requestId.current) return;
+        setResults(found);
+        setStatus(found.length === 0 ? "empty" : "idle");
+      })
+      .catch(() => {
+        if (id !== requestId.current) return;
+        setResults([]);
+        setStatus("failed");
+      })
+      .finally(() => {
+        if (id === requestId.current) setLoading(false);
+      });
+  }, []);
+
   // Debounced: Nominatim's free demo server rate-limits fast successive
   // requests, so searching on every keystroke silently lost results. Only
   // the text after the user pauses actually goes out over the network.
   useEffect(() => {
     const text = query.trim();
     if (text.length < 3) {
+      requestId.current++;
       setResults([]);
       setLoading(false);
       setStatus("idle");
       return;
     }
-    const id = ++requestId.current;
-    setLoading(true);
-    setStatus("idle");
-    const timer = setTimeout(() => {
-      searchPlaces(text)
-        .then((found) => {
-          if (id !== requestId.current) return;
-          setResults(found);
-          setStatus(found.length === 0 ? "empty" : "idle");
-        })
-        .catch(() => {
-          if (id !== requestId.current) return;
-          setResults([]);
-          setStatus("failed");
-        })
-        .finally(() => {
-          if (id === requestId.current) setLoading(false);
-        });
-    }, SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => run(text), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, run]);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -117,7 +120,7 @@ export function DestinationSearch() {
       </View>
       {results.length > 0 && (
         <FlatList
-          style={styles.results}
+          style={[styles.results, compact && styles.resultsCompact]}
           data={results}
           keyExtractor={(item, index) => `${item.coordinate.join(",")}-${index}`}
           keyboardShouldPersistTaps="handled"
@@ -131,13 +134,19 @@ export function DestinationSearch() {
         />
       )}
       {!loading && status !== "idle" && (
-        <View style={styles.result}>
+        <Pressable
+          style={styles.result}
+          disabled={status !== "failed"}
+          onPress={() => run(query.trim())}
+          accessibilityRole={status === "failed" ? "button" : undefined}
+          accessibilityLabel={status === "failed" ? "Retry search" : undefined}
+        >
           <Text style={styles.resultText}>
             {status === "empty"
               ? "No results — try a more specific search."
-              : "Search failed. Check your connection and try again."}
+              : "Search failed. Tap to try again."}
           </Text>
-        </View>
+        </Pressable>
       )}
     </View>
   );
@@ -172,6 +181,9 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
   results: { maxHeight: 200, borderTopWidth: 1, borderTopColor: colors.border },
+  // A landscape map is shorter, so a full-height dropdown would run under
+  // the HUD readouts and controls anchored to the bottom of the frame.
+  resultsCompact: { maxHeight: 120 },
   result: {
     paddingVertical: 12,
     paddingHorizontal: 16,

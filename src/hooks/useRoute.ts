@@ -7,7 +7,8 @@ import { useNavigationStore } from "../stores/navigationStore";
  * Fetches a route whenever a destination is set, from wherever the player
  * currently is. The origin is read once, at the moment the destination is
  * set — not re-fetched as the player moves — which is enough for previewing
- * and starting a route; live re-routing on drift is a later-milestone concern.
+ * and starting a route. Recovering from a wrong turn once navigation has
+ * actually started is `useRerouting`'s job, not this hook's.
  */
 export function useRoute() {
   const destination = useNavigationStore((s) => s.destination);
