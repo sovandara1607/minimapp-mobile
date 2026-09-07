@@ -1,14 +1,6 @@
 import type { MapStyleElement } from "react-native-maps";
 import { colors } from "./theme";
 
-/**
- * Google Maps JSON style (Android only — `customMapStyle` on `MapView`).
- * Apple Maps (the iOS default provider) has no JSON styling API, so iOS
- * renders in standard Apple Maps colors; see README for the trade-off.
- *
- * Rules cascade like CSS: later, more specific rules win. Ordered from the
- * general base up to per-feature overrides.
- */
 export const GOOGLE_MAP_STYLE: MapStyleElement[] = [
   { elementType: "geometry", stylers: [{ color: colors.land }] },
   { elementType: "labels.text.fill", stylers: [{ color: colors.muted }] },

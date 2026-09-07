@@ -4,18 +4,6 @@ import { motionEngine } from "../../services/motionEngine";
 
 const puckImage = require("../../../assets/player-arrow.png") as number;
 
-/**
- * Only this small marker subscribes at 5 Hz. The motion engine has already
- * smoothed the coordinate and turn-rate-limited the heading (see
- * motionEngine.ts), so a plain native marker update at that rate reads as
- * fluid motion — no extra JS-side animation loop needed.
- *
- * `flat` + `rotation` rotates the icon in world space (native, no JS bridge
- * cost), matching how the camera's own heading is applied — the two cancel
- * out visually so the arrow points "up" whenever the camera also faces the
- * user's heading, and counter-rotates correctly if the user spins the map
- * manually in Explore mode.
- */
 export const PlayerPuck = memo(function PlayerPuck() {
   const frame = useSyncExternalStore(
     motionEngine.subscribe,

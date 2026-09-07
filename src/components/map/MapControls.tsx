@@ -64,9 +64,6 @@ export function MapControls() {
             </Text>
           </View>
           {navigating ? (
-            // Distinct from "Clear": this returns to the route preview
-            // without discarding the destination, so a wrong tap while
-            // driving doesn't lose the whole route.
             <ActionButton label="Stop" compact onPress={stopNavigating}>
               <Icon name="pause" size={16} />
             </ActionButton>
@@ -114,10 +111,6 @@ export function MapControls() {
 const styles = StyleSheet.create({
   controls: { ...StyleSheet.absoluteFill },
   column: { position: "absolute", right: 16, top: 94, gap: 10 },
-  // Stacked vertically, three buttons cost ~170dp of height — affordable in
-  // a tall portrait map, not in a landscape one. Laid out as a row instead,
-  // pulled up near the top edge, they cost ~48dp and free the rest of the
-  // frame for the route card and readouts anchored to the bottom.
   columnLandscape: { top: 12, flexDirection: "row" },
   recenter: { position: "absolute", bottom: 40, alignSelf: "center" },
   recenterLandscape: { bottom: 16 },

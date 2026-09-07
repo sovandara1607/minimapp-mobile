@@ -1,9 +1,5 @@
 import type { SearchResult } from "../types/navigation";
 
-// OpenStreetMap's Nominatim: free, no API key or login. Usage policy asks
-// for a descriptive User-Agent and light request volume — fine for
-// development, but production traffic should move to a dedicated
-// Nominatim instance or a paid geocoder.
 const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org/search";
 
 export async function searchPlaces(query: string): Promise<SearchResult[]> {

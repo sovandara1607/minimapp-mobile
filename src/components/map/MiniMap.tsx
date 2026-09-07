@@ -30,12 +30,7 @@ const initialCamera = {
   heading: 0,
   altitude: altitudeForZoom(CAMERA.followZoom),
 };
-// Apple Maps has no JSON style API, so the custom sage/gray palette only
-// applies on Android (Google Maps). iOS renders standard Apple Maps colors —
-// see README for the trade-off behind this choice.
 const androidOnlyStyle = Platform.OS === "android" ? GOOGLE_MAP_STYLE : undefined;
-// react-native-maps has no onMapLoadingError; a stalled onMapReady is the
-// only real-world failure mode (bad network / missing Android Maps key).
 const READY_TIMEOUT_MS = 9000;
 
 export function MiniMap() {
@@ -78,19 +73,12 @@ export function MiniMap() {
     const timer = setTimeout(() => setStalled(true), READY_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, [ready, revision]);
-  // While previewing a route (set but not yet started), show the whole
-  // route instead of fighting the follow camera for the frame.
   useEffect(() => {
     if (!route || navigating) return;
     const points = route.coordinates.map(([longitude, latitude]) => ({
       latitude,
       longitude,
     }));
-    // The bottom padding clears the route card + "Start" button; that
-    // cluster is much shallower in landscape (see MapControls), and the
-    // right side now also has to clear the button row instead of the
-    // search box, so the fit needs its own numbers per orientation rather
-    // than reusing the portrait ones and over-zooming out.
     map.current?.fitToCoordinates(points, {
       edgePadding: isLandscape
         ? { top: 70, right: 90, bottom: 90, left: 60 }
@@ -192,9 +180,6 @@ const styles = StyleSheet.create({
     borderColor: "#E7EDE3",
   },
   search: { position: "absolute", top: 70, left: 18, right: 18 },
-  // Landscape trades vertical room for horizontal: pull the box up closer to
-  // the top edge and stop it stretching edge-to-edge — full-width would turn
-  // the input and its results list into an awkwardly wide single line.
   searchLandscape: { top: 46, right: undefined, width: 380, maxWidth: "58%" },
   loading: {
     position: "absolute",

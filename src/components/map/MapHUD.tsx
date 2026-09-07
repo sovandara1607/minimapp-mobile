@@ -11,8 +11,6 @@ export function MapHUD() {
   const accuracy = useMapStore((s) => s.fix?.accuracy);
   const stale = useMapStore((s) => s.stale);
   const headingAvailable = useMapStore((s) => s.headingAvailable);
-  // The route card only appears once a destination is set, so the readout
-  // only needs to dodge it (rather than always keeping extra clearance).
   const hasRouteCard = useNavigationStore((s) => !!s.destination);
   const { isLandscape } = useOrientation();
   return (
@@ -78,10 +76,6 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
   label: { fontSize: 12, fontWeight: "600", color: colors.ink },
   bottom: { position: "absolute", bottom: 72, left: 22, gap: 6 },
-  // A landscape map is shorter top-to-bottom, so the whole readout sits
-  // closer to the edge; when the route card is also on screen it needs to
-  // clear that too, since there's no longer room to stack both with margin
-  // to spare the way a tall portrait map has.
   bottomCompact: { bottom: 14, left: 16, gap: 3 },
   bottomAboveCard: { bottom: 58 },
   readout: { flexDirection: "row", alignItems: "baseline", gap: 5 },

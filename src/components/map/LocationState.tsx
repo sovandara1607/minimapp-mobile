@@ -44,9 +44,6 @@ export function LocationState({
   const waiting = status === "checking" || (status === "granted" && !stale);
   return (
     <View style={styles.scrim}>
-      {/* A short landscape window can't always fit this card's full height
-          (title + copy + two buttons); scrolling beats the alternative of
-          silently clipping the "Allow location" button off-screen. */}
       <ScrollView
         style={styles.cardScroll}
         contentContainerStyle={[

@@ -8,15 +8,6 @@ const {
 const fs = require("fs");
 const path = require("path");
 
-// iOS 27 refuses to launch apps that don't adopt the UIKit scene lifecycle
-// (Apple TN3187) — Expo's generated iOS template does not do this yet
-// (tracked upstream: expo/expo#46663, #46664), so it's patched in here via a
-// config plugin. This runs on every `expo prebuild`, so it survives
-// `--clean` instead of being lost the next time native projects regenerate.
-//
-// Window ownership moves from AppDelegate to a new SceneDelegate; AppDelegate
-// still builds the React Native factory before any scene connects, and hands
-// it off for SceneDelegate to start React Native once a window exists.
 const SCENE_DELEGATE_SOURCE = `import UIKit
 import React
 
@@ -59,8 +50,6 @@ function withSceneManifest(config) {
   });
 }
 
-// AppDelegate no longer owns the window directly — SceneDelegate does, once
-// a scene connects. Remove just the window-creation block Expo generates.
 function withAppDelegateSceneLifecycle(config) {
   return withAppDelegate(config, (config) => {
     const before = `

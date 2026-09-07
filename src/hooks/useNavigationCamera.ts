@@ -10,18 +10,6 @@ import { motionEngine } from "../services/motionEngine";
 import { useMapStore } from "../stores/mapStore";
 import { angleDelta, normalizeAngle, projectForward } from "../utils/geo";
 
-/**
- * Drives the map camera imperatively via `MapView.animateCamera`.
- * react-native-maps has no separate `<Camera>` element (unlike Mapbox), so
- * this hook both runs the animation loop and returns the gesture handlers
- * `MiniMap` wires onto `<MapView>` to detect manual panning/rotating.
- *
- * A "programmatic window" (`programmaticUntil`) tracks whenever *we* just
- * moved the camera, so `onRegionChangeComplete` — which also fires for our
- * own animations — can tell them apart from a real user gesture. This is
- * the only reliable cross-platform signal: `isGesture` on
- * `onRegionChangeComplete` is Google Maps (Android) only.
- */
 export function useNavigationCamera(
   mapRef: React.RefObject<MapView | null>,
   height: number,

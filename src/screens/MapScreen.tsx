@@ -20,11 +20,7 @@ export default function MapScreen() {
   const { isLandscape } = useOrientation();
   const mock = useMapStore((s) => s.mock);
   const setMock = useMapStore((s) => s.setMock);
-  // Landscape phones are short on height and, held either way round, put a
-  // notch or camera cutout on one side rather than the top — so padding
-  // has to widen on whichever edge the inset actually reports, and the
-  // wordmark chrome above/below the map has to shrink to leave the map (the
-  // one thing worth the screen's height) most of the frame.
+
   const devControl = mock ? (
     <ActionButton
       label="Stop simulation"

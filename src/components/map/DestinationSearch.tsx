@@ -46,9 +46,6 @@ export function DestinationSearch({ compact = false }: { compact?: boolean }) {
       });
   }, []);
 
-  // Debounced: Nominatim's free demo server rate-limits fast successive
-  // requests, so searching on every keystroke silently lost results. Only
-  // the text after the user pauses actually goes out over the network.
   useEffect(() => {
     const text = query.trim();
     if (text.length < 3) {
@@ -179,16 +176,27 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: 16,
   },
-  input: { flex: 1, fontSize: 14, color: colors.ink, padding: 0 },
-  results: { maxHeight: 200, borderTopWidth: 1, borderTopColor: colors.border },
-  // A landscape map is shorter, so a full-height dropdown would run under
-  // the HUD readouts and controls anchored to the bottom of the frame.
-  resultsCompact: { maxHeight: 120 },
+  input: { 
+    flex: 1, 
+    fontSize: 14, 
+    color: colors.ink, 
+    padding: 0
+   },
+  results: { maxHeight: 200, 
+    borderTopWidth: 1, 
+    borderTopColor: colors.border 
+  },
+  resultsCompact: { 
+    maxHeight: 120 
+  },
   result: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  resultText: { fontSize: 13, color: colors.ink },
+  resultText: { 
+    fontSize: 13, 
+    color: colors.ink 
+  },
 });

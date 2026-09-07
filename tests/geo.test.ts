@@ -3,8 +3,6 @@ import assert from "node:assert/strict";
 import { distance, distanceToPolyline } from "../src/utils/geo";
 import type { Coordinate } from "../src/types/map";
 
-// A short straight leg near San Francisco, long enough (~150m) that
-// vertex-only distance would be badly wrong for a point abeam its midpoint.
 const line: Coordinate[] = [
   [-122.4194, 37.7749],
   [-122.4176, 37.7749],
@@ -20,8 +18,6 @@ test("distanceToPolyline measures to the nearest segment, not just vertices", ()
   const off = distanceToPolyline(offset, line);
   assert.ok(Math.abs(off - 50) < 5, `expected ~50m off the line, got ${off}`);
 
-  // Distance to the nearer of the two vertices would hugely overstate this —
-  // confirm we're measuring against the segment, not the endpoints.
   const vertexDistance = Math.min(
     distance(offset, line[0]!),
     distance(offset, line[1]!),
